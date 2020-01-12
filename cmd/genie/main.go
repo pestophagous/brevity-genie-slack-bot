@@ -18,10 +18,9 @@ func main() {
 
 Loop:
 	for {
+		var msg slack.RTMEvent
 		select {
-		case msg := <-rtm.IncomingEvents:
-			log.Print("Event Received: ")
-
+		case msg = <-rtm.IncomingEvents:
 			switch ev := msg.Data.(type) {
 
 			case *slack.ConnectedEvent:
@@ -69,7 +68,7 @@ Loop:
 				break Loop
 
 			default:
-				log.Print("not matched to any event type")
+				log.Printf("Switch missing a case for: %s", msg.Type)
 				// Take no action
 			}
 		}

@@ -7,10 +7,13 @@ import (
 
 	"github.com/nlopes/slack"
 
+	"github.com/pestophagous/brevity-genie-slack-bot/pkg/brevity"
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/util"
 )
 
 func main() {
+	brevityBot := brevity.NewBrevityBot()
+
 	token := util.MustGetEnv("SLACKTOKEN")
 	api := slack.New(token)
 	rtm := api.NewRTM()
@@ -66,6 +69,8 @@ Loop:
 				if ev.User != info.User.ID && matched {
 					rtm.SendMessage(rtm.NewOutgoingMessage("you got it", ev.Channel))
 				}
+
+				brevityBot.Track(brevity.NewChatActivity(util.MessageTimestampToUTC(ev.Timestamp), ev.User))
 
 			case *slack.RTMError:
 				log.Printf("Error: %s\n", ev.Error())

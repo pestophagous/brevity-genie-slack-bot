@@ -11,6 +11,10 @@ import (
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/util"
 )
 
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile) // Lshortfile for file.go:NN
+}
+
 func main() {
 	brevityBot := brevity.NewBrevityBot()
 

@@ -50,9 +50,16 @@ Loop:
 				info := rtm.GetInfo()
 
 				text := ev.Text
+				log.Print(ev.User)      // US8FL2R91
+				log.Print(ev.Channel)   // CS1EW078Q
+				log.Print(ev.Type)      // "message"
+				log.Print(ev.Timestamp) // 1578794317.001700 // t=1578794317001700 ; date -d @${t%??????}
+				log.Print(ev.Text)
+				log.Print(ev.BotID)
+				log.Print(ev.Username)
+
 				text = strings.TrimSpace(text)
 				text = strings.ToLower(text)
-				log.Print(text)
 
 				matched, _ := regexp.MatchString("test poke the bot", text)
 

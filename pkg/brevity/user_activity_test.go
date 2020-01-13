@@ -1,3 +1,5 @@
+package brevity
+
 // NewChatActivity(ts time.Time, uID string)
 
 // choose and verify a behavior for when time is zero-value

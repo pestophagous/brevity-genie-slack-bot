@@ -8,11 +8,15 @@ import (
 	"github.com/nlopes/slack"
 
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/brevity"
+	"github.com/pestophagous/brevity-genie-slack-bot/pkg/trace"
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/util"
 )
 
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile) // Lshortfile for file.go:NN
+
+	// trace.EnableTraces([]string{"incoming-event"})
+	trace.EnableTraces([]string{"package-brevity"})
 }
 
 func main() {
@@ -31,39 +35,41 @@ Loop:
 			switch ev := msg.Data.(type) {
 
 			case *slack.ConnectedEvent:
+				trace.Trace("incoming-event", "ConnectedEvent")
 				log.Print("ConnectedEvent")
 			case *slack.ConnectionErrorEvent:
-				log.Print("ConnectionErrorEvent")
+				trace.Trace("incoming-event", "ConnectionErrorEvent")
 			case *slack.DisconnectedEvent:
-				log.Print("DisconnectedEvent")
+				trace.Trace("incoming-event", "DisconnectedEvent")
 			case *slack.MessageTooLongEvent:
-				log.Print("MessageTooLongEvent")
+				trace.Trace("incoming-event", "MessageTooLongEvent")
 			case *slack.OutgoingErrorEvent:
-				log.Print("OutgoingErrorEvent")
+				trace.Trace("incoming-event", "OutgoingErrorEvent")
 			case *slack.IncomingEventError:
-				log.Print("IncomingEventError")
+				trace.Trace("incoming-event", "IncomingEventError")
 			case *slack.UnmarshallingErrorEvent:
-				log.Print("UnmarshallingErrorEvent")
+				trace.Trace("incoming-event", "UnmarshallingErrorEvent")
 			case *slack.HelloEvent:
+				trace.Trace("incoming-event", "HelloEvent")
 				log.Print("HelloEvent")
 			case *slack.RateLimitEvent:
-				log.Print("RateLimitEvent")
+				trace.Trace("incoming-event", "RateLimitEvent")
 			case *slack.AckErrorEvent:
-				log.Print("AckErrorEvent")
+				trace.Trace("incoming-event", "AckErrorEvent")
 			case *slack.LatencyReport:
-				log.Print("LatencyReport")
+				trace.Trace("incoming-event", "LatencyReport")
 
 			case *slack.MessageEvent:
 				info := rtm.GetInfo()
 
 				text := ev.Text
-				log.Print(ev.User)      // US8FL2R91
-				log.Print(ev.Channel)   // CS1EW078Q
-				log.Print(ev.Type)      // "message"
-				log.Print(ev.Timestamp) // 1578794317.001700 // t=1578794317001700 ; date -d @${t%??????}
-				log.Print(ev.Text)
-				log.Print(ev.BotID)
-				log.Print(ev.Username)
+				trace.Trace("incoming-event", ev.User)      // US8FL2R91
+				trace.Trace("incoming-event", ev.Channel)   // CS1EW078Q
+				trace.Trace("incoming-event", ev.Type)      // "message"
+				trace.Trace("incoming-event", ev.Timestamp) // 1578794317.001700 // t=1578794317001700 ; date -d @${t%??????}
+				trace.Trace("incoming-event", ev.Text)
+				trace.Trace("incoming-event", ev.BotID)
+				trace.Trace("incoming-event", ev.Username)
 
 				text = strings.TrimSpace(text)
 				text = strings.ToLower(text)

@@ -12,6 +12,8 @@ import (
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/util"
 )
 
+var approvedMissingEventCases []string = []string{"ack", "user_typing"}
+
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile) // Lshortfile for file.go:NN
 
@@ -80,7 +82,11 @@ Loop:
 					rtm.SendMessage(rtm.NewOutgoingMessage("you got it", ev.Channel))
 				}
 
-				brevityBot.Track(brevity.NewChatActivity(util.MessageTimestampToUTC(ev.Timestamp), ev.User))
+				excusals := brevityBot.Track(brevity.NewChatActivity(util.MessageTimestampToUTC(ev.Timestamp), ev.User))
+
+				for _, excuse := range excusals {
+					rtm.SendMessage(rtm.NewOutgoingMessage(excuse, ev.Channel))
+				}
 
 			case *slack.RTMError:
 				log.Printf("Error: %s\n", ev.Error())
@@ -90,8 +96,9 @@ Loop:
 				break Loop
 
 			default:
-				log.Printf("Switch missing a case for: %s", msg.Type)
-				// Take no action
+				if !util.MatchStringInSlice(msg.Type, approvedMissingEventCases) {
+					log.Printf("Switch missing a case for: %s", msg.Type)
+				}
 			}
 		}
 	}

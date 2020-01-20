@@ -18,15 +18,17 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile) // Lshortfile for file.go:NN
 
 	// trace.EnableTraces([]string{"incoming-event"})
+	trace.EnableTraces([]string{"user-metadata"})
 	trace.EnableTraces([]string{"package-brevity"})
 }
 
 func main() {
-	brevityBot := brevity.NewBrevityBot()
-
 	token := util.MustGetEnv("SLACKTOKEN")
 	api := slack.New(token)
 	rtm := api.NewRTM()
+
+	brevityBot := brevity.NewBrevityBot(&slackAdapter{client: api})
+
 	go rtm.ManageConnection()
 
 Loop:

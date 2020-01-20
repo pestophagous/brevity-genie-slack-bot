@@ -3,6 +3,7 @@ package brevity
 import (
 	"time"
 
+	"github.com/pestophagous/brevity-genie-slack-bot/pkg/backend_contract"
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/trace"
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/user"
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/util"
@@ -10,11 +11,13 @@ import (
 
 type BrevityBot struct {
 	recentUsers map[string]*user.User
+	backend     backend_contract.Api
 }
 
-func NewBrevityBot() *BrevityBot {
+func NewBrevityBot(backend backend_contract.Api) *BrevityBot {
 	return &BrevityBot{
 		recentUsers: make(map[string]*user.User),
+		backend:     backend,
 	}
 }
 
@@ -48,7 +51,7 @@ func (bb *BrevityBot) findUser(userId string) *user.User {
 		return user
 	}
 
-	user := user.NewUser(userId)
+	user := user.NewUser(userId, bb.backend)
 	bb.recentUsers[userId] = user
 	return user
 }

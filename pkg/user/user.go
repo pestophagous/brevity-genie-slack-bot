@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pestophagous/brevity-genie-slack-bot/pkg/backend_contract"
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/chat"
+	"github.com/pestophagous/brevity-genie-slack-bot/pkg/user_metadata"
 )
 
 var arbitraryOldDate time.Time = time.Date(2000, time.June, 1, 23, 0, 0, 0, time.UTC)
@@ -14,14 +16,16 @@ type User struct {
 	ongoingChat   *chat.Chat
 	brevityLimits UserSettings
 	history       *chat.ChatHistory
+	metadata      user_metadata.UserMetadata
 }
 
-func NewUser(userId string) *User {
+func NewUser(userId string, backend backend_contract.Api) *User {
 	return &User{
 		id:            userId,
 		ongoingChat:   nil,
 		brevityLimits: SettingsForUser(userId),
 		history:       chat.NewChatHistory(userId, time.Duration(24)*time.Hour),
+		metadata:      user_metadata.MetadataForUser(userId, backend),
 	}
 }
 
@@ -85,7 +89,7 @@ func (u *User) GetExcusalAsOf(latestTimestamp time.Time) string {
 	}
 
 	if u.ongoingChat.Duration().Minutes() > float64(u.brevityLimits.ChatCapMinutes()) {
-		return fmt.Sprintf("%s must be getting back to work now :)", u.id)
+		return fmt.Sprintf("%s must be getting back to work now :)", u.metadata.HandleForAtMessages())
 	}
 
 	return ""

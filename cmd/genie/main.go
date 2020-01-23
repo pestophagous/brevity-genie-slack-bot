@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/nlopes/slack"
+	"github.com/nlopes/slack/slackevents"
 
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/brevity"
 	"github.com/pestophagous/brevity-genie-slack-bot/pkg/trace"
@@ -17,91 +21,87 @@ var approvedMissingEventCases []string = []string{"ack", "user_typing"}
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile) // Lshortfile for file.go:NN
 
-	// trace.EnableTraces([]string{"incoming-event"})
+	trace.EnableTraces([]string{"incoming-event"})
 	trace.EnableTraces([]string{"user-metadata"})
 	trace.EnableTraces([]string{"package-brevity"})
 }
 
 func main() {
 	token := util.MustGetEnv("SLACKTOKEN")
-	api := slack.New(token)
-	rtm := api.NewRTM()
+	vtoken := util.MustGetEnv("SLACKVTOKEN_DEPRECATED")
+	api := slack.New(token, slack.OptionDebug(true))
 
 	brevityBot := brevity.NewBrevityBot(&slackAdapter{client: api})
 
-	go rtm.ManageConnection()
+	http.HandleFunc("/events-endpoint", func(w http.ResponseWriter, r *http.Request) {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(r.Body)
+		body := buf.String()
 
-Loop:
-	for {
-		var msg slack.RTMEvent
-		select {
-		case msg = <-rtm.IncomingEvents:
-			switch ev := msg.Data.(type) {
+		eventsAPIEvent, e := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: vtoken}))
+		if e != nil {
+			log.Print("ERROR: ", e)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
-			case *slack.ConnectedEvent:
-				trace.Trace("incoming-event", "ConnectedEvent")
-				log.Print("ConnectedEvent")
-			case *slack.ConnectionErrorEvent:
-				trace.Trace("incoming-event", "ConnectionErrorEvent")
-			case *slack.DisconnectedEvent:
-				trace.Trace("incoming-event", "DisconnectedEvent")
-			case *slack.MessageTooLongEvent:
-				trace.Trace("incoming-event", "MessageTooLongEvent")
-			case *slack.OutgoingErrorEvent:
-				trace.Trace("incoming-event", "OutgoingErrorEvent")
-			case *slack.IncomingEventError:
-				trace.Trace("incoming-event", "IncomingEventError")
-			case *slack.UnmarshallingErrorEvent:
-				trace.Trace("incoming-event", "UnmarshallingErrorEvent")
-			case *slack.HelloEvent:
-				trace.Trace("incoming-event", "HelloEvent")
-				log.Print("HelloEvent")
-			case *slack.RateLimitEvent:
-				trace.Trace("incoming-event", "RateLimitEvent")
-			case *slack.AckErrorEvent:
-				trace.Trace("incoming-event", "AckErrorEvent")
-			case *slack.LatencyReport:
-				trace.Trace("incoming-event", "LatencyReport")
+		trace.Tracef("incoming-event", "outer event type: %s", eventsAPIEvent.Type)
 
-			case *slack.MessageEvent:
-				info := rtm.GetInfo()
+		if eventsAPIEvent.Type == slackevents.URLVerification {
+			var r *slackevents.ChallengeResponse
+			err := json.Unmarshal([]byte(body), &r)
+			if err != nil {
+				log.Print("ERROR: ", err)
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			w.Header().Set("Content-Type", "text")
+			w.Write([]byte(r.Challenge))
+			return
+		}
 
-				text := ev.Text
+		if eventsAPIEvent.Type == slackevents.CallbackEvent {
+			innerEvent := eventsAPIEvent.InnerEvent
+			trace.Tracef("incoming-event", "inner event type: %s", innerEvent.Type)
+
+			switch ev := innerEvent.Data.(type) {
+			case *slackevents.AppMentionEvent:
+				trace.Tracef("incoming-event", "app mention: %v", ev)
+
+			case *slackevents.MessageEvent:
 				trace.Trace("incoming-event", ev.User)      // US8FL2R91
 				trace.Trace("incoming-event", ev.Channel)   // CS1EW078Q
 				trace.Trace("incoming-event", ev.Type)      // "message"
-				trace.Trace("incoming-event", ev.Timestamp) // 1578794317.001700 // t=1578794317001700 ; date -d @${t%??????}
+				trace.Trace("incoming-event", ev.TimeStamp) // 1578794317.001700 // t=1578794317001700 ; date -d @${t%??????}
 				trace.Trace("incoming-event", ev.Text)
 				trace.Trace("incoming-event", ev.BotID)
 				trace.Trace("incoming-event", ev.Username)
 
-				text = strings.TrimSpace(text)
-				text = strings.ToLower(text)
+				// only "react" to MessageEvent(s) that came from NON-bots
+				if ev.BotID == "" {
+					text := ev.Text
 
-				matched, _ := regexp.MatchString("test poke the bot", text)
+					text = strings.TrimSpace(text)
+					text = strings.ToLower(text)
 
-				if ev.User != info.User.ID && matched {
-					rtm.SendMessage(rtm.NewOutgoingMessage("you got it", ev.Channel))
-				}
+					matched, _ := regexp.MatchString("test poke the bot", text)
 
-				excusals := brevityBot.Track(brevity.NewChatActivity(util.MessageTimestampToUTC(ev.Timestamp), ev.User))
+					if matched {
+						api.PostMessage(ev.Channel, slack.MsgOptionText("sure thing", false))
+					}
 
-				for _, excuse := range excusals {
-					rtm.SendMessage(rtm.NewOutgoingMessage(excuse, ev.Channel))
-				}
+					excusals := brevityBot.Track(brevity.NewChatActivity(util.MessageTimestampToUTC(ev.TimeStamp), ev.User))
 
-			case *slack.RTMError:
-				log.Printf("Error: %s\n", ev.Error())
-
-			case *slack.InvalidAuthEvent:
-				log.Printf("Invalid credentials")
-				break Loop
-
-			default:
-				if !util.MatchStringInSlice(msg.Type, approvedMissingEventCases) {
-					log.Printf("Switch missing a case for: %s", msg.Type)
+					for _, excuse := range excusals {
+						api.PostMessage(ev.Channel, slack.MsgOptionText(excuse, false))
+					}
 				}
 			}
 		}
+	})
+
+	log.Print("About to ListenAndServe")
+	err := http.ListenAndServe(":3000", nil)
+	if err != nil {
+		log.Printf("ERROR: %v", err)
 	}
 }

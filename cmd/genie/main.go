@@ -78,6 +78,7 @@ func main() {
 
 				// only "react" to MessageEvent(s) that came from NON-bots
 				if ev.BotID == "" {
+					trace.Trace("incoming-event", "candidate for a reaction")
 					text := ev.Text
 
 					text = strings.TrimSpace(text)
@@ -86,6 +87,7 @@ func main() {
 					matched, _ := regexp.MatchString("test poke the bot", text)
 
 					if matched {
+						trace.Trace("incoming-event", "matched the test string")
 						api.PostMessage(ev.Channel, slack.MsgOptionText("sure thing", false))
 					}
 

@@ -64,9 +64,11 @@ func refreshMetadataFromBackend() {
 	for _, user := range users {
 		var metadata *userMetadata
 		if _, ok := store.lookup[user.ID()]; !ok {
+			// if we didn't find a lookup entry for this user, then make one:
 			store.lookup[user.ID()] = &userMetadata{}
-			metadata = store.lookup[user.ID()]
 		}
+		// now use the lookup entry for this user:
+		metadata = store.lookup[user.ID()]
 
 		metadata.id = user.ID()
 		metadata.atHandle = user.AtHandle()

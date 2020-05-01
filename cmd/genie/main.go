@@ -102,9 +102,9 @@ func main() {
 	})
 
 	log.Print("About to ListenAndServe")
-	// In order to bind to port 80, you need not use sudo if you instead do:
+	// In order to bind to port 85, you need not use sudo if you instead do:
 	//    sudo setcap CAP_NET_BIND_SERVICE=+eip genie # last word is the NAME OF YOUR SERVER BINARY.
-	err := http.ListenAndServe(":80", nil) // not ALWAYS necessary to run as 'sudo' (see above)
+	err := http.ListenAndServe(":85", nil) // not ALWAYS necessary to run as 'sudo' (see above)
 	if err != nil {
 		log.Printf("ERROR: %v", err)
 	}

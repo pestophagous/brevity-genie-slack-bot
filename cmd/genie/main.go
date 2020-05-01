@@ -100,7 +100,9 @@ func main() {
 	})
 
 	log.Print("About to ListenAndServe")
-	err := http.ListenAndServe(":3000", nil)
+	// In order to bind to port 83, you need not use sudo if you instead do:
+	//    sudo setcap CAP_NET_BIND_SERVICE=+eip genie # last word is the NAME OF YOUR SERVER BINARY.
+	err := http.ListenAndServe(":83", nil) // not ALWAYS necessary to run as 'sudo' (see above)
 	if err != nil {
 		log.Printf("ERROR: %v", err)
 	}
